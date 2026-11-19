@@ -16,7 +16,8 @@ class TmdbService {
       backdropPath: 'https://image.tmdb.org/t/p/w780/xOMo8BRK7PfcJv9JCnx7s5hj0x2.jpg',
       voteAverage: 8.2,
       releaseDate: '2024',
-      genre: 'Ciencia Ficción • Aventura',
+      genre: 'Ciencia Ficción',
+      genreIds: [878, 12],
       matchPercentage: 98,
     ),
     const MovieModel(
@@ -27,7 +28,8 @@ class TmdbService {
       backdropPath: 'https://image.tmdb.org/t/p/w780/xJHokMbljvjADYdit5fK5VQsXEG.jpg',
       voteAverage: 8.4,
       releaseDate: '2014',
-      genre: 'Ciencia Ficción • Drama',
+      genre: 'Ciencia Ficción',
+      genreIds: [878, 18],
       matchPercentage: 96,
     ),
     const MovieModel(
@@ -38,7 +40,8 @@ class TmdbService {
       backdropPath: 'https://image.tmdb.org/t/p/w780/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg',
       voteAverage: 8.1,
       releaseDate: '2023',
-      genre: 'Drama • Historia',
+      genre: 'Drama',
+      genreIds: [18, 36],
       matchPercentage: 94,
     ),
     const MovieModel(
@@ -49,7 +52,8 @@ class TmdbService {
       backdropPath: 'https://image.tmdb.org/t/p/w780/euYIWhGvdaRhuPJA2NBDEuds2xm.jpg',
       voteAverage: 7.8,
       releaseDate: '2024',
-      genre: 'Acción • Aventura',
+      genre: 'Acción',
+      genreIds: [28, 12],
       matchPercentage: 91,
     ),
     const MovieModel(
@@ -60,7 +64,8 @@ class TmdbService {
       backdropPath: 'https://image.tmdb.org/t/p/w780/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg',
       voteAverage: 8.4,
       releaseDate: '2010',
-      genre: 'Acción • Ciencia Ficción',
+      genre: 'Acción',
+      genreIds: [28, 878],
       matchPercentage: 97,
     ),
     const MovieModel(
@@ -71,7 +76,8 @@ class TmdbService {
       backdropPath: 'https://image.tmdb.org/t/p/w780/b0PlSFdDwbyK0cf5RxwDpaOJQvQ.jpg',
       voteAverage: 7.7,
       releaseDate: '2022',
-      genre: 'Crimen • Misterio',
+      genre: 'Crimen',
+      genreIds: [80, 9648],
       matchPercentage: 93,
     ),
   ];
@@ -121,6 +127,24 @@ class TmdbService {
     return fallbackMovies;
   }
 
+  static Future<List<MovieModel>> getMoviesByGenre(int genreId) async {
+    if (genreId == 0) {
+      return getPopular();
+    }
+    final url = Uri.parse('$_baseUrl/discover/movie?api_key=$_apiKey&language=$_language&sort_by=popularity.desc&with_genres=$genreId&page=1');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final List list = decoded['results'] ?? [];
+        if (list.isNotEmpty) {
+          return list.map((item) => MovieModel.fromJson(item)).toList();
+        }
+      }
+    } catch (_) {}
+    return fallbackMovies.where((m) => m.genreIds.contains(genreId)).toList();
+  }
+
   static Future<List<MovieModel>> searchMovies(String query) async {
     if (query.trim().isEmpty) return [];
     final encoded = Uri.encodeComponent(query.trim());
@@ -134,5 +158,16 @@ class TmdbService {
       }
     } catch (_) {}
     return fallbackMovies.where((m) => m.title.toLowerCase().contains(query.toLowerCase())).toList();
+  }
+
+  static Future<MovieModel> getRandomMovie() async {
+    final popular = await getPopular();
+    final topRated = await getTopRated();
+    final pool = [...popular, ...topRated];
+    if (pool.isNotEmpty) {
+      pool.shuffle();
+      return pool.first;
+    }
+    return fallbackMovies.first;
   }
 }

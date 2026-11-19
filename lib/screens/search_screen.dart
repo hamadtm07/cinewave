@@ -57,6 +57,194 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
+  void _showRandomRecommendation() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: AppThemes.primary),
+      ),
+    );
+
+    final randomMovie = await TmdbService.getRandomMovie();
+
+    if (mounted) {
+      Navigator.pop(context);
+      _displayRecommendationDialog(randomMovie);
+    }
+  }
+
+  void _displayRecommendationDialog(MovieModel movie) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppThemes.darkCard,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.casino_rounded, color: AppThemes.primary, size: 24),
+                      SizedBox(width: 8),
+                      Text(
+                        'Recomendación Aleatoria',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: AppThemes.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: AppThemes.textSecondary),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const Divider(color: Color(0x1AD4AF37), height: 16),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 85,
+                    height: 125,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppThemes.primary, width: 1.5),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: FadeInImage(
+                        placeholder: const AssetImage('assets/jar-loading.gif'),
+                        image: NetworkImage(movie.posterPath),
+                        fit: BoxFit.cover,
+                        imageErrorBuilder: (context, error, stackTrace) => Container(
+                          color: AppThemes.darkBackground,
+                          child: const Icon(Icons.movie, color: AppThemes.primary),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppThemes.systemMatch.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppThemes.systemMatch),
+                          ),
+                          child: Text(
+                            '${movie.matchPercentage}% coincidencia',
+                            style: const TextStyle(
+                              color: AppThemes.systemMatch,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          movie.title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppThemes.textPrimary,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Text(
+                              movie.releaseDate,
+                              style: const TextStyle(color: AppThemes.textSecondary, fontSize: 12),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.star_rounded, color: AppThemes.primary, size: 15),
+                            const SizedBox(width: 2),
+                            Text(
+                              movie.voteAverage.toStringAsFixed(1),
+                              style: const TextStyle(color: AppThemes.textPrimary, fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          movie.overview,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: AppThemes.textSecondary, fontSize: 11, height: 1.4),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: AppThemes.primary.withValues(alpha: 0.5)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _showRandomRecommendation();
+                      },
+                      icon: const Icon(Icons.refresh_rounded, color: AppThemes.primary, size: 18),
+                      label: const Text('Otra película', style: TextStyle(color: AppThemes.primary)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppThemes.primary,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DetailsScreen(movie: movie),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.info_outline, size: 18),
+                      label: const Text('Ver Detalles', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -110,7 +298,29 @@ class _SearchScreenState extends State<SearchScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: AppThemes.primary.withValues(alpha: 0.6), width: 1.2),
+                backgroundColor: AppThemes.primary.withValues(alpha: 0.12),
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.casino_rounded, color: AppThemes.primary, size: 20),
+              label: const Text(
+                '¿No sabes qué ver? Recomiéndame una película',
+                style: TextStyle(
+                  color: AppThemes.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+              onPressed: _showRandomRecommendation,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -129,9 +339,9 @@ class _SearchScreenState extends State<SearchScreen> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: AppThemes.primary.withValues(alpha: 0.4)),
                   ),
-                  child: Text(
+                  child: const Text(
                     'TMDB API',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppThemes.primary,
                       fontSize: 10,
                       fontWeight: FontWeight.bold,

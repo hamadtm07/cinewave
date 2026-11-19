@@ -7,7 +7,29 @@ class MovieModel {
   final double voteAverage;
   final String releaseDate;
   final String genre;
+  final List<int> genreIds;
   final int matchPercentage;
+
+  static const Map<int, String> genreMap = {
+    28: 'Acción',
+    12: 'Aventura',
+    16: 'Animación',
+    35: 'Comedia',
+    80: 'Crimen',
+    99: 'Documental',
+    18: 'Drama',
+    10751: 'Familia',
+    14: 'Fantasía',
+    36: 'Historia',
+    27: 'Terror',
+    10402: 'Música',
+    9648: 'Misterio',
+    10749: 'Romance',
+    878: 'Ciencia Ficción',
+    53: 'Suspenso',
+    10752: 'Bélica',
+    37: 'Western',
+  };
 
   const MovieModel({
     required this.id,
@@ -18,6 +40,7 @@ class MovieModel {
     required this.voteAverage,
     required this.releaseDate,
     required this.genre,
+    this.genreIds = const [],
     this.matchPercentage = 95,
   });
 
@@ -40,6 +63,12 @@ class MovieModel {
         ? rawOverview
         : 'Explora esta historia en los cines y plataformas digitales a través de la base de datos de The Movie DB.';
 
+    final rawGenreIds = (json['genre_ids'] as List?)?.map((e) => e as int).toList() ?? [];
+    String genreName = 'Película';
+    if (rawGenreIds.isNotEmpty && genreMap.containsKey(rawGenreIds.first)) {
+      genreName = genreMap[rawGenreIds.first]!;
+    }
+
     return MovieModel(
       id: json['id'] ?? 0,
       title: json['title'] ?? 'Sin título',
@@ -48,7 +77,8 @@ class MovieModel {
       backdropPath: backdrop,
       voteAverage: vote,
       releaseDate: year,
-      genre: 'Película',
+      genre: genreName,
+      genreIds: rawGenreIds,
       matchPercentage: match,
     );
   }

@@ -5,6 +5,7 @@ import 'package:cinewave/routes/app_routes.dart';
 import 'package:cinewave/services/tmdb_service.dart';
 import 'package:cinewave/themes/app_themes.dart';
 import 'package:cinewave/widgets/widgets.dart';
+import 'package:cinewave/screens/screens.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -96,8 +97,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   popular: _popular,
                   topRated: _topRated,
                 ),
-                _ExploreView(movies: _popular),
-                _FavoritesView(movies: _topRated.take(4).toList()),
+                _ExploreView(initialMovies: _popular),
+                _FavoritesView(movies: _topRated.take(6).toList()),
                 const _ProfileView(),
               ],
             ),
@@ -288,7 +289,14 @@ class _HomeFeedView extends StatelessWidget {
               ),
             ),
           ),
-          _buildSectionHeader('En Cartelera', 'TMDB Live', () {}),
+          _buildSectionHeader('En Cartelera', 'Ver más', () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CategoryMoviesScreen(title: 'En Cartelera', movies: nowPlaying),
+              ),
+            );
+          }),
           SizedBox(
             height: 235,
             child: ListView.builder(
@@ -309,7 +317,14 @@ class _HomeFeedView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          _buildSectionHeader('Más Populares', 'Ver más', () {}),
+          _buildSectionHeader('Más Populares', 'Ver más', () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CategoryMoviesScreen(title: 'Más Populares', movies: popular),
+              ),
+            );
+          }),
           SizedBox(
             height: 235,
             child: ListView.builder(
@@ -330,7 +345,14 @@ class _HomeFeedView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          _buildSectionHeader('Aclamadas por la Crítica', 'Top Ranking', () {}),
+          _buildSectionHeader('Aclamadas por la Crítica', 'Ver más', () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CategoryMoviesScreen(title: 'Aclamadas por la Crítica', movies: topRated),
+              ),
+            );
+          }),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: GridView.builder(
@@ -387,19 +409,30 @@ class _HomeFeedView extends StatelessWidget {
               ),
             ],
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: AppThemes.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: AppThemes.primary.withValues(alpha: 0.3)),
-            ),
-            child: Text(
-              tag,
-              style: const TextStyle(
-                color: AppThemes.primary,
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
+          InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(6),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppThemes.primary.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppThemes.primary.withValues(alpha: 0.4)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    tag,
+                    style: const TextStyle(
+                      color: AppThemes.primary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(Icons.chevron_right, size: 14, color: AppThemes.primary),
+                ],
               ),
             ),
           ),
@@ -409,53 +442,127 @@ class _HomeFeedView extends StatelessWidget {
   }
 }
 
-class _ExploreView extends StatelessWidget {
-  final List<MovieModel> movies;
+class _ExploreView extends StatefulWidget {
+  final List<MovieModel> initialMovies;
 
-  const _ExploreView({required this.movies});
+  const _ExploreView({required this.initialMovies});
+
+  @override
+  State<_ExploreView> createState() => _ExploreViewState();
+}
+
+class _ExploreViewState extends State<_ExploreView> {
+  final List<Map<String, dynamic>> _genres = [
+    {'name': 'Todas', 'id': 0},
+    {'name': 'Ciencia Ficción', 'id': 878},
+    {'name': 'Acción', 'id': 28},
+    {'name': 'Aventura', 'id': 12},
+    {'name': 'Drama', 'id': 18},
+    {'name': 'Animación', 'id': 16},
+    {'name': 'Comedia', 'id': 35},
+    {'name': 'Terror', 'id': 27},
+    {'name': 'Suspenso', 'id': 53},
+  ];
+
+  int _selectedGenreId = 0;
+  List<MovieModel> _displayedMovies = [];
+  bool _isFiltering = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _displayedMovies = widget.initialMovies;
+  }
+
+  void _onSelectGenre(int genreId) async {
+    if (_selectedGenreId == genreId && _displayedMovies.isNotEmpty) return;
+
+    setState(() {
+      _selectedGenreId = genreId;
+      _isFiltering = true;
+    });
+
+    final filtered = await TmdbService.getMoviesByGenre(genreId);
+
+    if (mounted) {
+      setState(() {
+        _displayedMovies = filtered;
+        _isFiltering = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final categories = ['Ciencia Ficción', 'Acción', 'Drama', 'Aventura', 'Animación', 'Suspenso'];
-
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Explorar Géneros',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppThemes.textPrimary,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Filtrar por Género',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppThemes.textPrimary,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppThemes.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${_displayedMovies.length} películas',
+                  style: const TextStyle(color: AppThemes.primary, fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 38,
+            height: 40,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              itemCount: categories.length,
+              physics: const BouncingScrollPhysics(),
+              itemCount: _genres.length,
               itemBuilder: (context, index) {
-                final isSelected = index == 0;
-                return Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isSelected ? AppThemes.primary : AppThemes.darkCard,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: isSelected ? AppThemes.primary : AppThemes.primary.withValues(alpha: 0.3),
+                final genre = _genres[index];
+                final isSelected = genre['id'] == _selectedGenreId;
+                return GestureDetector(
+                  onTap: () => _onSelectGenre(genre['id'] as int),
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppThemes.primary : AppThemes.darkCard,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected ? AppThemes.primary : AppThemes.primary.withValues(alpha: 0.3),
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: AppThemes.primary.withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
                     ),
-                  ),
-                  child: Text(
-                    categories[index],
-                    style: TextStyle(
-                      color: isSelected ? Colors.black : AppThemes.textPrimary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                    alignment: Alignment.center,
+                    child: Text(
+                      genre['name'] as String,
+                      style: TextStyle(
+                        color: isSelected ? Colors.black : AppThemes.textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 );
@@ -463,36 +570,67 @@ class _ExploreView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Catálogo Destacado',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppThemes.textPrimary,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 4,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: AppThemes.primary,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _selectedGenreId == 0
+                    ? 'Catálogo Completo'
+                    : 'Películas de ${_genres.firstWhere((g) => g['id'] == _selectedGenreId)['name']}',
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: AppThemes.textPrimary,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.62,
-              crossAxisSpacing: 14,
-              mainAxisSpacing: 14,
-            ),
-            itemCount: movies.length,
-            itemBuilder: (context, index) {
-              final movie = movies[index];
-              return MoviePosterCard(
-                movie: movie,
-                width: double.infinity,
-                onTap: () {
-                  Navigator.pushNamed(context, AppRoutes.detailsRoute, arguments: movie);
-                },
-              );
-            },
-          ),
+          _isFiltering
+              ? const SizedBox(
+                  height: 300,
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppThemes.primary),
+                  ),
+                )
+              : _displayedMovies.isEmpty
+                  ? Container(
+                      height: 240,
+                      alignment: Alignment.center,
+                      child: const Text(
+                        'No hay películas disponibles en este género',
+                        style: TextStyle(color: AppThemes.textSecondary),
+                      ),
+                    )
+                  : GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        childAspectRatio: 0.62,
+                        crossAxisSpacing: 14,
+                        mainAxisSpacing: 14,
+                      ),
+                      itemCount: _displayedMovies.length,
+                      itemBuilder: (context, index) {
+                        final movie = _displayedMovies[index];
+                        return MoviePosterCard(
+                          movie: movie,
+                          width: double.infinity,
+                          onTap: () {
+                            Navigator.pushNamed(context, AppRoutes.detailsRoute, arguments: movie);
+                          },
+                        );
+                      },
+                    ),
         ],
       ),
     );
@@ -513,23 +651,32 @@ class _FavoritesView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                width: 4,
-                height: 18,
-                decoration: BoxDecoration(
-                  color: AppThemes.primary,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+              Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: AppThemes.primary,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Mi Lista de Favoritos',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppThemes.textPrimary,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              const Text(
-                'Mi Lista de Favoritos',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppThemes.textPrimary,
-                ),
+              Text(
+                '${movies.length} guardadas',
+                style: const TextStyle(color: AppThemes.primary, fontSize: 12, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -608,7 +755,7 @@ class _ProfileView extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
-                    Icons.verified_rounded,
+                    Icons.workspace_premium_rounded,
                     color: Colors.black,
                     size: 18,
                   ),
@@ -626,17 +773,25 @@ class _ProfileView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Estudiante de Ingeniería de Sistemas',
-            style: TextStyle(
-              fontSize: 13,
-              color: AppThemes.primary,
-              fontWeight: FontWeight.w600,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppThemes.primary.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppThemes.primary.withValues(alpha: 0.5)),
+            ),
+            child: const Text(
+              'Membresía CineWave Gold 4K',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppThemes.primary,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           const Text(
-            'Universidad de Margarita (UNIMAR)',
+            'hamad.eltroudi@cinewave.tv',
             style: TextStyle(
               fontSize: 12,
               color: AppThemes.textSecondary,
@@ -646,15 +801,15 @@ class _ProfileView extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _buildMetricCard('Películas', '42', Icons.local_movies_outlined),
+                child: _buildMetricCard('Vistas', '128', Icons.check_circle_outline),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _buildMetricCard('Mi Lista', '18', Icons.bookmark_border_rounded),
+                child: _buildMetricCard('En Lista', '24', Icons.bookmark_border_rounded),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _buildMetricCard('Favorito', 'Sci-Fi', Icons.auto_awesome_outlined),
+                child: _buildMetricCard('Reseñas', '85', Icons.star_outline_rounded),
               ),
             ],
           ),
@@ -671,10 +826,10 @@ class _ProfileView extends StatelessWidget {
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.badge_outlined, color: AppThemes.primary, size: 20),
+                    Icon(Icons.credit_card_rounded, color: AppThemes.primary, size: 20),
                     SizedBox(width: 8),
                     Text(
-                      'Información de la Cuenta',
+                      'Suscripción & Plan',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
@@ -684,15 +839,13 @@ class _ProfileView extends StatelessWidget {
                   ],
                 ),
                 const Divider(height: 22, color: Color(0x1AD4AF37)),
-                _buildInfoRow('Correo Académico', 'hel_troudi.9491@unimar.edu.ve'),
+                _buildInfoRow('Plan Activo', 'Gold Anual (4K + HDR)'),
                 const SizedBox(height: 10),
-                _buildInfoRow('Telegram', '@hamadelt'),
+                _buildInfoRow('Estado', 'Activo • Renovación 2027'),
                 const SizedBox(height: 10),
-                _buildInfoRow('GitHub', 'github.com/hamadtm07'),
+                _buildInfoRow('Pantallas simultáneas', '4 dispositivos'),
                 const SizedBox(height: 10),
-                _buildInfoRow('Materia', 'Programación III'),
-                const SizedBox(height: 10),
-                _buildInfoRow('Profesor', 'Prof. Héctor'),
+                _buildInfoRow('Descargas offline', 'Disponibles sin límite'),
               ],
             ),
           ),
@@ -705,12 +858,64 @@ class _ProfileView extends StatelessWidget {
               border: Border.all(color: AppThemes.primary.withValues(alpha: 0.2)),
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildOptionTile(Icons.hd_outlined, 'Calidad de Streaming', 'Ultra HD 4K'),
+                const Row(
+                  children: [
+                    Icon(Icons.tune_rounded, color: AppThemes.primary, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Preferencias de Reproducción',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppThemes.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 22, color: Color(0x1AD4AF37)),
+                _buildOptionTile(Icons.hd_outlined, 'Calidad de Video', 'Ultra HD 4K (Máxima)'),
                 const Divider(height: 16, color: Color(0x1AD4AF37)),
-                _buildOptionTile(Icons.language_outlined, 'Idioma de la API', 'Español (es-ES)'),
+                _buildOptionTile(Icons.surround_sound_outlined, 'Formato de Audio', 'Dolby Atmos 5.1'),
                 const Divider(height: 16, color: Color(0x1AD4AF37)),
-                _buildOptionTile(Icons.info_outline_rounded, 'Versión de la App', 'CineWave v1.0.0'),
+                _buildOptionTile(Icons.subtitles_outlined, 'Subtítulos Predeterminados', 'Español (Automático)'),
+                const Divider(height: 16, color: Color(0x1AD4AF37)),
+                _buildOptionTile(Icons.download_for_offline_outlined, 'Descargas Guardadas', '14.2 GB de 128 GB'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppThemes.darkCard,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppThemes.primary.withValues(alpha: 0.2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.shield_outlined, color: AppThemes.primary, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Seguridad & Cuenta',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppThemes.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 22, color: Color(0x1AD4AF37)),
+                _buildOptionTile(Icons.family_restroom_rounded, 'Control Parental', 'Desactivado (Todo público)'),
+                const Divider(height: 16, color: Color(0x1AD4AF37)),
+                _buildOptionTile(Icons.devices_rounded, 'Dispositivos Activos', 'TV Sala, iPhone, iPad Pro'),
+                const Divider(height: 16, color: Color(0x1AD4AF37)),
+                _buildOptionTile(Icons.info_outline_rounded, 'Versión de CineWave', 'v2.1.0 Streaming Edition'),
               ],
             ),
           ),
