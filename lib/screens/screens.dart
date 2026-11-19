@@ -1,0 +1,2 @@
+export 'package:cinewave/screens/details_screen.dart';
+export 'package:cinewave/screens/home_screen.dart';
